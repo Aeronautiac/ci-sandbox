@@ -47,7 +47,10 @@ async fn main() {
         .route("/health", get(|| async { "ok" }))
         .route("/hit", get(hit))
         .layer(CorsLayer::new().allow_origin(config.allowed_origin.parse::<HeaderValue>().unwrap()))
-        .with_state(AppState { pool, greeting: config.greeting });
+        .with_state(AppState {
+            pool,
+            greeting: config.greeting,
+        });
 
     let listener = tokio::net::TcpListener::bind(&config.bind).await.unwrap();
     println!("listening on {}", config.bind);
@@ -55,17 +58,22 @@ async fn main() {
 }
 
 async fn hit(State(state): State<AppState>) -> Json<Value> {
-    let count: i64 = sqlx::query_scalar("UPDATE hits SET count = count + 1 WHERE id = 1 RETURNING count")
-        .fetch_one(&state.pool)
-        .await
-        .unwrap();
+    let count: i64 =
+        sqlx::query_scalar("UPDATE hits SET count = count + 1 WHERE id = 1 RETURNING count")
+            .fetch_one(&state.pool)
+            .await
+            .unwrap();
     Json(json!({ "count": count, "shout": shout(&state.greeting).await }))
 }
 
 // the same lookup yagami's spawn_runtime does: the worker must sit in the same directory as this exe.
 async fn shout(text: &str) -> String {
     let mut child = tokio::process::Command::new(
-        current_exe().unwrap().parent().unwrap().join(format!("worker{}", std::env::consts::EXE_SUFFIX)),
+        current_exe()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join(format!("worker{}", std::env::consts::EXE_SUFFIX)),
     )
     .stdin(Stdio::piped())
     .stdout(Stdio::piped())
@@ -77,7 +85,13 @@ async fn shout(text: &str) -> String {
     drop(stdin);
 
     let mut out = String::new();
-    child.stdout.take().unwrap().read_to_string(&mut out).await.unwrap();
+    child
+        .stdout
+        .take()
+        .unwrap()
+        .read_to_string(&mut out)
+        .await
+        .unwrap();
     child.wait().await.unwrap();
     out
 }
@@ -88,8 +102,10 @@ mod tests {
     use std::collections::HashMap;
 
     fn lookup(vars: &[(&str, &str)]) -> impl Fn(&str) -> Option<String> {
-        let map: HashMap<String, String> =
-            vars.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+        let map: HashMap<String, String> = vars
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
         move |name| map.get(name).cloned()
     }
 
@@ -109,5 +125,10 @@ mod tests {
     fn config_names_the_missing_var() {
         let err = Config::from_lookup(lookup(&[("SANDBOX_BIND", "127.0.0.1:8080")])).unwrap_err();
         assert_eq!(err, "missing env var DATABASE_URL");
+    }
+
+    #[test]
+    fn fail_on_purpose() {
+        panic!()
     }
 }
