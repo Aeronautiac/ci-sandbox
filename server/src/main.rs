@@ -126,9 +126,4 @@ mod tests {
         let err = Config::from_lookup(lookup(&[("SANDBOX_BIND", "127.0.0.1:8080")])).unwrap_err();
         assert_eq!(err, "missing env var DATABASE_URL");
     }
-
-    #[test]
-    fn fail_on_purpose() {
-        panic!()
-    }
 }

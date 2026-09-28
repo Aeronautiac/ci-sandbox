@@ -1,4 +1,4 @@
-name: Rust
+name: CI
 
 on:
   push:
@@ -10,14 +10,25 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-
+  server-test:
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
+
     - name: Run server tests
       run: cargo test --workspace --verbose
+
+    - name: Rust cache
+      uses: Swatinem/rust-cache@v2
+
+  client-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
     - name: Run client tests
       working-directory: client
       run: npm ci && npm run check
+
